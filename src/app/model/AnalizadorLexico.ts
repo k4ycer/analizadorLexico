@@ -1,3 +1,4 @@
+import { FSM } from './FSM';
 import { Keywords } from './constants/Keywords';
 import { FutureReservedWords } from './constants/FutureReservedWords';
 import { BooleanLiterals } from './constants/BooleanLiterals';
@@ -71,8 +72,14 @@ export class AnalizadorLexico{
                 token = new Token(TipoToken.Identifier, reconocido, this.linea, this.columna);
             }
         }else if(CharUtils.isDigit(caracterActual)){
-            reconocido = this.reconocerNumero();            
+            reconocido = this.reconocerNumero();       
+            token = new Token(TipoToken.DecimalLiteral, reconocido, this.linea, this.columna);
         }else{
+            let exepcion = new ExcepcionCaracterInvalido(this.linea, this.columna, this.input.charAt(this.posicion));
+            throw exepcion;
+        }
+
+        if(!token){
             let exepcion = new ExcepcionCaracterInvalido(this.linea, this.columna, this.input.charAt(this.posicion));
             throw exepcion;
         }
@@ -129,7 +136,13 @@ export class AnalizadorLexico{
     }
 
     private reconocerNumero(): string{
-        return null;
+        let fsm: FSM = this.crearAutomataReconoceNumeros();
+
+        let inputFsm = this.input.substring(this.posicion);
+
+        let {aceptado, string} = fsm.run(inputFsm);
+
+        return aceptado ? string : null;
     }
 
     private ignorarEspaciosYSaltos(){
@@ -152,4 +165,86 @@ export class AnalizadorLexico{
             }
         }    
     } 
+
+    private crearAutomataReconoceNumeros(): FSM{
+        let Estado = {
+            Inicial: 1,
+            Entero: 2,
+            EmpezarNumeroConParteFraccional: 3,
+            NumeroConParteFraccional: 4,
+            EmpezarNumeroConExponente: 5,
+            EmpezarNumeroConExponenteSigno: 6,
+            NumeroConExponente: 7,
+            NoSiguienteEstado: -1
+        };
+
+        let siguienteEstado = (estadoActual: number, caracter: string) => {
+            switch(estadoActual){
+                case Estado.Inicial:
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.Entero;
+                    }
+                    break;
+                case Estado.Entero:
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.Entero;
+                    }
+
+                    if(caracter === '.'){
+                        return Estado.EmpezarNumeroConParteFraccional;
+                    }
+
+                    if(caracter.toLowerCase() === 'e'){
+                        return Estado.EmpezarNumeroConExponente;
+                    }
+
+                    break;
+                case Estado.EmpezarNumeroConParteFraccional:
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.NumeroConParteFraccional
+                    }
+
+                    break;
+                case Estado.NumeroConParteFraccional:
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.NumeroConParteFraccional;
+                    }
+
+                    if(caracter.toLowerCase() === 'e'){
+                        return Estado.EmpezarNumeroConExponente;
+                    }
+
+                    break;
+
+                case Estado.EmpezarNumeroConExponente:
+                    if(caracter === "+" || caracter === "-"){
+                        return Estado.EmpezarNumeroConExponenteSigno;
+                    }
+
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.NumeroConExponente;
+                    }
+
+                    break;
+
+                case Estado.EmpezarNumeroConExponenteSigno:
+                    if(CharUtils.isDigit(caracter)){
+                        return Estado.NumeroConExponente;
+                    }
+
+                    break;
+                
+                default:
+                    break;
+            }
+
+            return Estado.NoSiguienteEstado;
+        };
+
+        return new FSM(
+            new Set([Estado.Inicial, Estado.Entero, Estado.EmpezarNumeroConParteFraccional, Estado.NumeroConParteFraccional, Estado.EmpezarNumeroConExponente, Estado.EmpezarNumeroConExponenteSigno, Estado.EmpezarNumeroConExponente, Estado.NoSiguienteEstado]),
+            Estado.Inicial,
+            new Set([Estado.Entero, Estado.NumeroConParteFraccional, Estado.NumeroConExponente]),
+            siguienteEstado);
+    }
 }

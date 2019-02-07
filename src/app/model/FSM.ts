@@ -16,8 +16,9 @@ export class FSM{
     /// Runs this FSM on the specified 'input' string.
     /// Returns 'true' if 'input' or a subset of 'input' matches
     /// the regular expression corresponding to this FSM.
-    public run(input): boolean{
+    public run(input): any{
         let currentState = this.initialState;
+        let string = "";
 
         for (let i = 0, length = input.length; i < length; ++i) {
             let character = input.charAt(i);
@@ -27,9 +28,10 @@ export class FSM{
                 break;
             }
             
+            string += character;
             currentState = nextState;
         }
 
-        return this.acceptingStates.has(currentState);
+        return {aceptado: this.acceptingStates.has(currentState), string: string};
     }
 }

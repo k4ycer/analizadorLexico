@@ -12,7 +12,7 @@ export class AppComponent {
 	title = 'analizadorLexicoTypescript';
 
 	ngOnInit(){
-		let input = "while hola number hey\n Como for if nada \n null true";
+		let input = "while hola number hey\n Como for if nada \n null true 54.7e-9h";
 
 		let analizadorLexico = new AnalizadorLexico(input);
 		try{
